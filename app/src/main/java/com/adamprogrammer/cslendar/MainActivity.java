@@ -2,6 +2,7 @@ package com.adamprogrammer.cslendar;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,6 +15,16 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -25,14 +36,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     TableLayout mainTable;
     private LayoutInflater inflater;
     Calendar calendar;
+    Calendar calendarCountDays;
     String[] days;
-    Calendar calendarTemp;
     View tr;
     Button btnNext;
     Button btnPrev;
-
-    final int DATE_ACTUAL_SERVER_MONTH = 8; // for a moment, i know its messy
-    final int DATE_ACTUAL_SERVER_DAY = 17;
+    static int DATE_ACTUAL_SERVER_YEAR;
+    static int DATE_ACTUAL_SERVER_MONTH; // for a moment, i know its messy
+    static int DATE_ACTUAL_SERVER_DAY;
+    static int DATE_MONTH_SELECTED;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,17 +52,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mainTable = (TableLayout) findViewById(R.id.main_table);
         days = new String[] { "Sun", "Mon", "Tue", "Wed",
                 "Thu", "Fri", "Sat" };
-        createCalendar(getDateFromServer());
+
+        //createCalendar(getDateFromServer());
+        getServerData();
+    }
+    private void getServerData() {
+        String url = "http://adampol.scienceontheweb.net/dates.php";
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(url, null,  new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    DATE_ACTUAL_SERVER_YEAR = response.getInt("year");
+                    DATE_ACTUAL_SERVER_MONTH = response.getInt("month");
+                    DATE_ACTUAL_SERVER_DAY= response.getInt("day");
+                    createCalendar(0);
+                } catch (JSONException e) {
+                    Snackbar.make(getWindow().getDecorView().getRootView(), e+"", Snackbar.LENGTH_LONG)
+                            .show();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("TAG", "onErrorResponse: "+error);
+            }
+        });
+        Singleton.getInstance(this).addToRequestQueue(jsonObjectRequest);
     }
 
-
-    private void createCalendar (int[] date) {
+    private void createCalendar (int future) {
         calendar = Calendar.getInstance(Locale.US);
-        calendar.set(date[0], date[1], date[2]);
-
-        calendarTemp = Calendar.getInstance(Locale.US);
-        calendarTemp.set(date[0], date[1], 0); // check first day in a month
-        //Log.e("TAG", "createCalendar(TEMP): "+days[calendarTemp.get(Calendar.DAY_OF_WEEK)]);
+        calendarCountDays = Calendar.getInstance(Locale.US);
+        if (future == 1) {
+            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+1, 1);
+            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+1, 0);
+            DATE_MONTH_SELECTED = 1;
+        } else if (future == 2) {
+            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+2, 1);
+            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+2, 0);
+            DATE_MONTH_SELECTED = 2;
+        } else {
+            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH, DATE_ACTUAL_SERVER_DAY);
+            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH, 0);
+            DATE_MONTH_SELECTED = 0;
+        }
 
         for (int i=0; i<8; i++) { // rows
             TableRow row = new TableRow(this);
@@ -128,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int exists = 1;
         int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
         int daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-        int calendarPadding = calendarTemp.get(Calendar.DAY_OF_WEEK);
+        int calendarPadding = calendarCountDays.get(Calendar.DAY_OF_WEEK);
 
         if (day <= calendarPadding) { // setting "calendar padding"
 
@@ -153,23 +198,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.prev_month) {
-            mainTable.removeAllViews();
-            int[] month = getDateFromServer(); // need to replace it with some constant defined after connecting
-            month[1]--;
-            month[2] = 1;
-            if (month[1]==DATE_ACTUAL_SERVER_MONTH) {
-                month[2] = DATE_ACTUAL_SERVER_DAY;
+
+            if (DATE_MONTH_SELECTED == 1) {
+                mainTable.removeAllViews();
+                createCalendar(0);
+            } else if (DATE_MONTH_SELECTED == 2) {
+                mainTable.removeAllViews();
+                createCalendar(1);
+            } else {
+                Snackbar.make(getWindow().getDecorView().getRootView(), "Cannot do this", Snackbar.LENGTH_LONG).show();
             }
-            createCalendar(month);
+
         } else {
-            mainTable.removeAllViews();
-            int[] month = getDateFromServer(); // the same with this
-            month[1]++;
-            month[2] = 1;
-            if (month[1]==DATE_ACTUAL_SERVER_MONTH) {
-                month[2] = DATE_ACTUAL_SERVER_DAY;
+            if (DATE_MONTH_SELECTED == 0) {
+                mainTable.removeAllViews();
+                createCalendar(1);
+            } else if (DATE_MONTH_SELECTED == 1) {
+                mainTable.removeAllViews();
+                createCalendar(2);
+            } else {
+                Snackbar.make(getWindow().getDecorView().getRootView(), "Cannot do this", Snackbar.LENGTH_LONG).show();
             }
-            createCalendar(month);
         }
     }
 }

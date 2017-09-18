@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/calendar_header"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="40dp"
     android:background="@color/colorPrimary"
     android:gravity="center"
     android:orientation="horizontal"
@@ -11,7 +11,7 @@
     <Button
         android:id="@+id/prev_month"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_weight="0.2"
         android:background="@drawable/left" />
 
@@ -26,7 +26,7 @@
     <Button
         android:id="@+id/next_month"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_weight="0.2"
         android:background="@drawable/right" />
 </LinearLayout>

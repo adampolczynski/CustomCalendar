@@ -2,6 +2,7 @@ package com.adamprogrammer.cslendar;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -11,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -99,10 +101,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         for (int i=0; i<8; i++) { // rows
             TableRow row = new TableRow(this);
-            TableRow.LayoutParams lp = new TableRow.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT);
+            TableRow.LayoutParams lp = new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
 
             row.setLayoutParams(lp);
-            row.setBackgroundColor(Color.LTGRAY);
 
             for (int x=0; x<7; x++) { // columns
                 if (i==0)  { // setting month
@@ -113,16 +115,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     btnPrev = (Button) tr.findViewById(R.id.prev_month);
                     btnPrev.setOnClickListener(this);
                     TextView tv_cm = (TextView) tr.findViewById(R.id.calendar_month);
-                    tv_cm.setText(calendar.get(Calendar.MONTH)+", day:"+calendar.get(Calendar.DAY_OF_MONTH)
-                    +", year: "+calendar.get(Calendar.YEAR));
+                    tv_cm.setText(String.format(Locale.US,"%tB",calendar));
                     mainTable.addView(tr);
                     break;
                 } else if (i==1) { // setting days of week names
-                    TextView tv = new TextView(this);
-                    ViewGroup.LayoutParams lpp = new TableRow.LayoutParams(TableRow.LayoutParams.WRAP_CONTENT,
-                            0, 1f);
-                    row.setLayoutParams(lpp);
-                    tv.setPadding(5,5,5,5);
+                    Button tv = new Button(this);
+                    ViewGroup.LayoutParams lpp = new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+                    lpp.height = 40;
+                    tv.setLayoutParams(lpp);
+                    tv.setPadding(0,0,0,0);
+                    tv.setTextSize(10);
+                    tv.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.calendar_item));
+                    tv.setEnabled(false);
+                    //tv.setPadding(5,5,5,5);
+
                     tv.setText(days[x]);
                     row.addView(tv);
                 } else { // settings days of month
@@ -145,20 +152,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             break;
                     }
 
-                    TextView tv = new TextView(this);
-                    ViewGroup.LayoutParams lpp = new TableRow.LayoutParams(TableRow.LayoutParams.WRAP_CONTENT,
-                            0, 1f);
-                    row.setLayoutParams(lpp);
-                    tv.setPadding(5,5,5,5);
-                    int[] dayOptions = setDayOptions((x+1+counter));
-                    if (dayOptions[0] == 1) { // correct day
-                        tv.setFocusable(true);
-                        tv.setClickable(true);
-                        tv.setEnabled(true);
-                        //tv.setBackground(ContextCompat.getDrawable(this, R.drawable.calendar_item));
-                        //tv.setBackgroundResource(R.drawable.calendar_item);
-                        tv.setBackgroundColor(dayOptions[1]);
+                    Button tv = new Button(this);
+                    tv.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.calendar_item));
+                    tv.setEnabled(false);
+                    tv.setPadding(0,0,0,0);
+                    tv.setTextSize(10);
+                    tv.setLayoutParams(new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,1.0f));
+                    int[] dayOptions = getDayOptions((x+1+counter));
+                    if (dayOptions[0] == 1) { // correct day in month
                         tv.setText(dayOptions[2]+"");
+                        if (dayOptions[1] == 0) { // day in the past
+
+                        } else { // day available
+                            tv.setEnabled(true);
+                            tv.setOnClickListener(this);
+                        }
+
                     } else {
                         tv.setText("");
                     }
@@ -168,9 +178,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mainTable.addView(row);
         }
     }
-    private int[] setDayOptions(int day) {
+    private int[] getDayOptions(int day) {
         int color = 0;
         int exists = 1;
+        int type = 0; // 0-day in the past, 1- day available, 2- day off, 3- day busy
         int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
         int daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
         int calendarPadding = calendarCountDays.get(Calendar.DAY_OF_WEEK);
@@ -181,24 +192,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         if (day < dayOfMonth+calendarPadding) { // filtering passed days and
-            color = Color.LTGRAY;
+            type = 0;
         } else if(day > daysInMonth+calendarPadding) { // dont display those not existing in month
             exists = 0;
         } else { // correct days
-            color = Color.YELLOW;
+            type = 1;
         }
-        return new int[] {exists, color, day-calendarPadding};
+        return new int[] {exists, type, day-calendarPadding};
     }
-
-    private int[] getDateFromServer() {
-
-        return new int[] {2017,8,17};
-    };
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.prev_month) {
-
+        if (v.getId() == R.id.prev_month) { // here a lil bit chaotic, need to organize later
             if (DATE_MONTH_SELECTED == 1) {
                 mainTable.removeAllViews();
                 createCalendar(0);
@@ -208,8 +213,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             } else {
                 Snackbar.make(getWindow().getDecorView().getRootView(), "Cannot do this", Snackbar.LENGTH_LONG).show();
             }
-
-        } else {
+        } else if (v.getId() == R.id.next_month){
             if (DATE_MONTH_SELECTED == 0) {
                 mainTable.removeAllViews();
                 createCalendar(1);
@@ -219,6 +223,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             } else {
                 Snackbar.make(getWindow().getDecorView().getRootView(), "Cannot do this", Snackbar.LENGTH_LONG).show();
             }
+        } else {
+            Button b = (Button) v;
+            Snackbar.make(getWindow().getDecorView().getRootView(), "Clicked calendar: "+b.getText().toString(),
+                    Snackbar.LENGTH_LONG).show();
+            b.setSelected(true);
         }
     }
 }

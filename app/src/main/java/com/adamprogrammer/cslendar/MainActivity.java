@@ -43,10 +43,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     View tr;
     Button btnNext;
     Button btnPrev;
-    static int DATE_ACTUAL_SERVER_YEAR;
-    static int DATE_ACTUAL_SERVER_MONTH; // for a moment, i know its messy
-    static int DATE_ACTUAL_SERVER_DAY;
-    static int DATE_MONTH_SELECTED;
+    static int ACTUAL_SERVER_YEAR;
+    static int ACTUAL_SERVER_MONTH; // for a moment, i know its messy
+    static int ACTUAL_SERVER_DAY;
+    static int MONTH_SELECTED_REL;
+    static int leftORRight;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,9 +65,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onResponse(JSONObject response) {
                 try {
-                    DATE_ACTUAL_SERVER_YEAR = response.getInt("year");
-                    DATE_ACTUAL_SERVER_MONTH = response.getInt("month");
-                    DATE_ACTUAL_SERVER_DAY= response.getInt("day");
+                    ACTUAL_SERVER_YEAR = response.getInt("year");
+                    ACTUAL_SERVER_MONTH = response.getInt("month");
+                    ACTUAL_SERVER_DAY= response.getInt("day");
                     createCalendar(0);
                 } catch (JSONException e) {
                     Snackbar.make(getWindow().getDecorView().getRootView(), e+"", Snackbar.LENGTH_LONG)
@@ -82,49 +83,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Singleton.getInstance(this).addToRequestQueue(jsonObjectRequest);
     }
 
-    private void createCalendar (int future) {
+    private void createCalendar (int leftOrRight) {
         calendar = Calendar.getInstance(Locale.US);
         calendarCountDays = Calendar.getInstance(Locale.US);
-        if (future == 1) {
-            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+1, 1);
-            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+1, 0);
-            DATE_MONTH_SELECTED = 1;
-        } else if (future == 2) {
-            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+2, 1);
-            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH+2, 0);
-            DATE_MONTH_SELECTED = 2;
-        } else {
-            calendar.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH, DATE_ACTUAL_SERVER_DAY);
-            calendarCountDays.set(DATE_ACTUAL_SERVER_YEAR, DATE_ACTUAL_SERVER_MONTH, 0);
-            DATE_MONTH_SELECTED = 0;
+        if (MONTH_SELECTED_REL + leftOrRight == 0) {
+            calendar.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH, ACTUAL_SERVER_DAY);
+            calendarCountDays.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH, 0);
+            MONTH_SELECTED_REL = 0 ;// aktualny
+        } else if (leftOrRight == 1) { // do przodu
+            MONTH_SELECTED_REL++;
+            calendar.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH + MONTH_SELECTED_REL, 1);
+            calendarCountDays.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH + MONTH_SELECTED_REL, 0);
+        } else { // do tylu
+            MONTH_SELECTED_REL--;
+            calendar.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH + MONTH_SELECTED_REL, 1);
+            calendarCountDays.set(ACTUAL_SERVER_YEAR, ACTUAL_SERVER_MONTH + MONTH_SELECTED_REL, 0);
         }
 
-        for (int i=0; i<8; i++) { // rows
+        for (int i = 0; i < 8; i++) { // rows
             TableRow row = new TableRow(this);
             TableRow.LayoutParams lp = new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
 
             row.setLayoutParams(lp);
 
-            for (int x=0; x<7; x++) { // columns
-                if (i==0)  { // setting month
-                    inflater = (LayoutInflater)getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            for (int x = 0; x < 7; x++) { // columns
+                if (i == 0) { // setting month
+                    inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                     tr = inflater.from(this).inflate(R.layout.calendar_header, null);
                     btnNext = (Button) tr.findViewById(R.id.next_month);
                     btnNext.setOnClickListener(this);
                     btnPrev = (Button) tr.findViewById(R.id.prev_month);
                     btnPrev.setOnClickListener(this);
                     TextView tv_cm = (TextView) tr.findViewById(R.id.calendar_month);
-                    tv_cm.setText(String.format(Locale.US,"%tB",calendar));
+                    tv_cm.setText(String.format(Locale.getDefault(), "%tB", calendar));
                     mainTable.addView(tr);
                     break;
-                } else if (i==1) { // setting days of week names
+                } else if (i == 1) { // setting days of week names
                     Button tv = new Button(this);
                     ViewGroup.LayoutParams lpp = new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
                     lpp.height = 40;
+                    tv.setTextColor(Color.BLACK);
                     tv.setLayoutParams(lpp);
-                    tv.setPadding(0,0,0,0);
+                    tv.setPadding(0, 0, 0, 0);
                     tv.setTextSize(10);
                     tv.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.calendar_item));
                     tv.setEnabled(false);
@@ -155,13 +157,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Button tv = new Button(this);
                     tv.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.calendar_item));
                     tv.setEnabled(false);
-                    tv.setPadding(0,0,0,0);
+                    tv.setPadding(0, 0, 0, 0);
                     tv.setTextSize(10);
                     tv.setLayoutParams(new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,1.0f));
-                    int[] dayOptions = getDayOptions((x+1+counter));
+                            ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));
+                    int[] dayOptions = getDayOptions((x + 1 + counter));
                     if (dayOptions[0] == 1) { // correct day in month
-                        tv.setText(dayOptions[2]+"");
+                        tv.setText(String.format(Locale.getDefault(),"%d", dayOptions[2]));
                         if (dayOptions[1] == 0) { // day in the past
 
                         } else { // day available
@@ -204,20 +206,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.prev_month) { // here a lil bit chaotic, need to organize later
-            if (DATE_MONTH_SELECTED == 1) {
+            if (MONTH_SELECTED_REL == 1) {
                 mainTable.removeAllViews();
                 createCalendar(0);
-            } else if (DATE_MONTH_SELECTED == 2) {
+            } else if (MONTH_SELECTED_REL == 2) {
                 mainTable.removeAllViews();
                 createCalendar(1);
             } else {
                 Snackbar.make(getWindow().getDecorView().getRootView(), "Cannot do this", Snackbar.LENGTH_LONG).show();
             }
         } else if (v.getId() == R.id.next_month){
-            if (DATE_MONTH_SELECTED == 0) {
+            if (MONTH_SELECTED_REL == 0) {
                 mainTable.removeAllViews();
                 createCalendar(1);
-            } else if (DATE_MONTH_SELECTED == 1) {
+            } else if (MONTH_SELECTED_REL == 1) {
                 mainTable.removeAllViews();
                 createCalendar(2);
             } else {
